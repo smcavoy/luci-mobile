@@ -10,6 +10,9 @@ Status: proposal. Based on `main` at v2.0.0 (`b617fca`).
 | Router selector | Saved profiles, a selector sheet on the Dashboard, and a Manage Routers screen | Yes, app-only | Small–medium |
 | Wi-Fi stats for a client | Client detail already shows signal, SNR, PHY rates and traffic from `iwinfo.assoclist`, for the selected router only | Yes. The basics need no new packages. Richer stats need router packages and ACLs that vary by platform | Small (basics) to large (full) |
 
+| Router groups (travel router vs home router + APs) | Not modelled. Clients aggregate over all routers or one | Yes, app-only. Needs a `groupId` on `Router` | Medium |
+| Mark "this device" in the client list | Nothing | Yes, on iOS and Android. No permission and no new package | Small |
+
 No new Flutter dependencies are needed for any of this. The only new
 requirements are optional packages on the router.
 
@@ -100,14 +103,14 @@ key-complete, which `arb_completeness_test.dart` enforces.
 
 ### 2.3 Launch when the last router is down
 
+Decided: use the last router logged into. If it does not answer, show a list
+of the saved routers instead of the bare login form.
+
 In `LoginScreen._tryAutoLogin()`, if auto-login fails as *unreachable* and
-other routers are saved:
-
-- Show a "Couldn't reach <name>" state that lists the saved routers with
-  their health. Tapping one calls `selectRouter()`.
-- Optionally, add a preference to auto-select the first reachable router.
-
-Keep the manual login form available as a secondary action.
+other routers are saved, show "Couldn't reach <name>" above the saved
+routers with their health (§2.1). Tapping one calls `selectRouter()`. Keep
+the manual login form as a secondary action. With groups (§3.1), the list is
+grouped.
 
 ### 2.4 Combined clients
 
@@ -154,7 +157,26 @@ health-aware.
   backward-compatible `Router.toJson` change: new optional keys that are left
   out when null, matching how `alternateAddress` is handled.
 
-Effort: small to medium, mostly UI and l10n.
+### 3.1 Router groups
+
+Your setup is two independent networks: a travel router with its own
+clients, and a home router with two APs. They should not be mixed.
+
+- Add an optional `groupId` and a group name to `Router` (new optional
+  JSON keys, left out when null, so 2.0.0 profiles still load). Store groups
+  as a small separate list. Deleting a group ungroups its routers.
+- The selector picks a **group**, and within it a router. The clients list
+  aggregates the routers **in the selected group** rather than all saved
+  routers. The existing "aggregate all routers" switch becomes "aggregate
+  this group".
+- A group can name a **primary** router (the one with DHCP). The APs' role is
+  to answer "which AP is this client on", so their assoclists are read, but
+  their own DHCP is ignored.
+- Health (§2.1) rolls up per group: "Home: 2 of 3 online".
+- Dashboard preferences and the event feed are already per router. They stay
+  that way.
+
+Effort: small to medium for the selector, medium for groups.
 
 ## 4. Proposal: client Wi-Fi stats
 
@@ -194,25 +216,42 @@ can say "Install `iw` and grant access for retry and airtime stats" instead
 of hiding the section. Document the optional packages in the README's
 *Router setup* section.
 
-### 4.2 Stats for the phone itself (optional)
+### 4.2 Your own phone: router-side stats, and marking "this device"
 
-This means the phone's own link to the router.
+You mainly use iOS, so router-side data is the source. iOS has no public
+API for the phone's own Wi-Fi signal (`NEHotspotNetwork` needs an entitlement
+and a location permission, and reports little), and Android needs location
+permission and native code. So the plan is not to read stats on the phone at
+all. The router already sees the phone as a client and reports its signal,
+rates and traffic (§4.1), which works the same on iOS and Android.
 
-- **Android:** `WifiManager.getConnectionInfo()` / `WifiInfo` gives RSSI,
-  link speed, frequency and BSSID. It needs location permission for SSID and
-  BSSID, which the app does not request today. It requires a platform channel
-  or a plugin such as `network_info_plus`. `network_info_plus` gives
-  SSID/BSSID/IP only, not RSSI, so a small custom channel is needed.
-- **iOS:** very restricted. There is no public RSSI API.
-  `NEHotspotNetwork.fetchCurrent` gives SSID/BSSID and a mostly-zero
-  `signalStrength`, and needs the *Access Wi-Fi Information* entitlement and
-  location permission.
+To make that work the app must recognise which client is the phone:
 
-For most purposes it is easier to find the phone's own MAC in the router's
-assoclist and reuse §4.1. This also works on iOS, with the caveat that
-private/random MACs are per-SSID but stable, so matching by current IP is
-more reliable. This is feasible, but the per-platform cost and the privacy
-permissions make it a poor first step. I recommend deferring it.
+1. Read the phone's own addresses with `dart:io` `NetworkInterface.list()`.
+   No permission and no new package. On iOS use the Wi-Fi interface (`en0`);
+   ignore cellular (`pdp_ip*`) and VPN (`utun*`).
+2. Match those addresses against the group's client list (DHCP leases and
+   host hints, IPv4 and IPv6, including privacy addresses).
+3. Mark the match with a "This device" badge and a highlighted row, and pin it
+   to the top of the list. Show it in client detail too.
+4. Add a "Your connection" card: signal, rate and connected AP, live (§4.3).
+   That is your phone's Wi-Fi stats, taken from the router.
+
+Matching by IP rather than by MAC is deliberate. iOS "Private Wi-Fi
+Address" uses a per-network random MAC, and iOS does not let an app read its
+own MAC. The router sees the random MAC, so the app cannot match on it.
+
+Limits, all of which fail safely with no marker:
+
+- On cellular, or on a VPN or fallback address, the phone's address is not in
+  any lease, so nothing is marked. That is correct.
+- If the phone is on the travel router, it is marked in the travel router's
+  group. The travel router must be in the app for this.
+- Phones behind a second NAT (a travel router in client mode on hotel Wi-Fi)
+  show the travel router's LAN address. That is the address that matters
+  there.
+
+Effort: small.
 
 ### 4.3 Planned enhancements, in order
 
@@ -251,8 +290,10 @@ conventions in #80.
   3. `feat: health-aware router switcher in the app bar` (§3)
   4. `feat: partial-failure banner for aggregated clients` (§2.4)
   5. `feat: client Wi-Fi stats from the owning router, live refresh` (§4.3 1–3)
-  6. `feat: signal in client list` (§4.3 4)
-  7. `feat: hostapd / iw station stats behind capability gates` (§4.3 5)
+  6. `feat: router groups` (§3.1)
+  7. `feat: mark this device in the client list, with a "Your connection" card` (§4.2)
+  8. `feat: signal in client list` (§4.3 4)
+  9. `feat: hostapd / iw station stats behind capability gates` (§4.3 5)
 - **Tests for new behaviour.** Put unit tests next to the existing ones:
   `router_unreachable_test`, `clients_router_switch_test`,
   `capability_service_test` and `client_detail_providers_test`. Add mock data
@@ -273,13 +314,25 @@ conventions in #80.
 - **Docs.** Update the README feature list and *Router setup* section when
   optional router packages become useful.
 
-## 6. Open questions
+## 6. Decisions and remaining questions
 
-1. When the last router is down at launch, should the app auto-select the
-   first reachable one, or always ask?
-2. Are your extra routers full routers with their own DHCP, or dumb APs
-   behind one DHCP server? This decides how important §4.3 step 2 is.
-3. Which OpenWrt versions and hardware (driver families) do you need to
-   support? This decides whether tiers 2 and 3 are worth it.
-4. Is §4.2 (the phone's own Wi-Fi stats) wanted, or is router-side data
-   enough?
+Decided:
+
+1. **Launch:** use the last router logged into; if it is unreachable, show a
+   list of saved routers.
+2. **Groups:** routers are grouped. A travel router is one group, and a home
+   router with two APs is another.
+3. **Firmware:** OpenWrt 25.x only.
+4. **Hardware:** GL.iNet GL-MT3000, Linksys MA8300, ASUS MAP202, GL.iNet
+   Flint 3, TP-Link Archer C7. All use mac80211 drivers (mt76, ath10k, ath9k)
+   on which `iwinfo.assoclist` works (§4.1 tier 0). The GL.iNet units run
+   vendor firmware unless flashed with stock 25.x, so confirm which you run.
+5. **Platform:** mainly iOS, so router-side stats are required, and the phone
+   is identified by IP (§4.2).
+
+Still to confirm on real hardware before tiers 2 and 3:
+
+- Whether `hostapd.*` `get_clients` and `file.exec` on `iw` are allowed by the
+  default rpcd ACLs on 25.x. If not, the app tells the user which ACL to add.
+- Whether the MA8300 and MAP202 (Qualcomm IPQ40xx) report noise in assoclist.
+  Without it there is no SNR, and the card omits it.
