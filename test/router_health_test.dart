@@ -250,6 +250,67 @@ void main() {
       expect(health(c)!.lastError, isNull);
     });
 
+    test('a refused sign-in does not inherit an earlier outage error', () {
+      final c = container();
+      final notifier = c.read(routerHealthProvider.notifier);
+      notifier.debugReport(
+        const RouterHealthReport(
+          'r1',
+          RouterHealthStatus.unreachable,
+          error: SocketException('down'),
+        ),
+      );
+      notifier.debugReport(
+        const RouterHealthReport('r1', RouterHealthStatus.authFailed),
+      );
+      expect(health(c)!.status, RouterHealthStatus.authFailed);
+      expect(health(c)!.lastError, isNull);
+    });
+
+    test('a probe that finds the router answering clears its error', () async {
+      final c = container(probe: _FakeProbe({'192.168.1.1'}));
+      final notifier = c.read(routerHealthProvider.notifier);
+      notifier.debugReport(
+        const RouterHealthReport(
+          'r1',
+          RouterHealthStatus.unreachable,
+          error: SocketException('down'),
+        ),
+      );
+      await notifier.probe(_router());
+      expect(health(c)!.status, RouterHealthStatus.online);
+      expect(health(c)!.lastError, isNull);
+    });
+
+    test('a second probe while one is running is ignored', () async {
+      final gate = Completer<void>();
+      final probe = _FakeProbe({'192.168.1.1'}, gate: gate);
+      final c = container(probe: probe);
+      final notifier = c.read(routerHealthProvider.notifier);
+      notifier.debugReport(
+        const RouterHealthReport('r1', RouterHealthStatus.authFailed),
+      );
+
+      final first = notifier.probe(_router());
+      await notifier.probe(_router());
+      gate.complete();
+      await first;
+
+      expect(probe.asked, ['192.168.1.1']);
+      expect(health(c)!.status, RouterHealthStatus.authFailed);
+    });
+
+    test('probeAll forgets routers that are no longer saved', () async {
+      final c = container(probe: _FakeProbe({'192.168.1.1'}));
+      final notifier = c.read(routerHealthProvider.notifier);
+      notifier.debugReport(
+        const RouterHealthReport('gone', RouterHealthStatus.authFailed),
+      );
+      await notifier.probeAll([_router()]);
+      expect(health(c, 'gone'), isNull);
+      expect(health(c)!.status, RouterHealthStatus.online);
+    });
+
     test('probing an answering router marks it online', () async {
       final c = container(probe: _FakeProbe({'192.168.1.1'}));
       await c.read(routerHealthProvider.notifier).probe(_router());

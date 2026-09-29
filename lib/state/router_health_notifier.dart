@@ -42,7 +42,13 @@ class RouterHealthNotifier extends Notifier<Map<String, RouterHealth>> {
             lastSeen: DateTime.now(),
             clearError: true,
           )
-        : previous.copyWith(status: report.status, lastError: report.error);
+        // Overwrites the error, null included: a refused sign-in must not
+        // inherit the connection error of an earlier outage.
+        : RouterHealth(
+            status: report.status,
+            lastSeen: previous.lastSeen,
+            lastError: report.error,
+          );
     state = {...state, report.routerId: next};
   }
 
@@ -55,6 +61,9 @@ class RouterHealthNotifier extends Notifier<Map<String, RouterHealth>> {
   Future<void> probe(model.Router router) async {
     final id = router.id;
     final before = state[id] ?? const RouterHealth();
+    // One probe per router at a time; a second would read `checking` as the
+    // prior status and lose what the first knew.
+    if (before.status == RouterHealthStatus.checking) return;
     state = {
       ...state,
       id: before.copyWith(status: RouterHealthStatus.checking),
@@ -87,11 +96,20 @@ class RouterHealthNotifier extends Notifier<Map<String, RouterHealth>> {
       id: current.copyWith(
         status: status,
         lastSeen: reachable ? DateTime.now() : null,
+        clearError: status == RouterHealthStatus.online,
       ),
     };
   }
 
-  /// Probes every router in [routers] at once.
-  Future<void> probeAll(Iterable<model.Router> routers) =>
-      Future.wait(routers.map(probe));
+  /// Probes every saved router in [routers] at once, and forgets any router
+  /// that is no longer among them, so a deleted router's status is not
+  /// inherited by one later added under the same id.
+  Future<void> probeAll(Iterable<model.Router> routers) {
+    final ids = {for (final r in routers) r.id};
+    state = {
+      for (final e in state.entries)
+        if (ids.contains(e.key)) e.key: e.value,
+    };
+    return Future.wait(routers.map(probe));
+  }
 }

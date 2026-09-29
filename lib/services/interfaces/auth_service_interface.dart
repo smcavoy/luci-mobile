@@ -5,9 +5,9 @@ class FallbackLoginResult {
   final bool success;
   final int usedAddressIndex; // 0 = primary, 1 = alternate
 
-  /// Why a failed login failed, when the router could not be reached. Null
-  /// when the router answered and refused, so a caller can tell "down" from
-  /// "wrong password".
+  /// The error a failed login ended with, when there was one. Null when the
+  /// router answered without a session - a refused sign-in. It is not
+  /// necessarily unreachability: classify it with `isRouterUnreachable`.
   final Object? cause;
 
   FallbackLoginResult({
