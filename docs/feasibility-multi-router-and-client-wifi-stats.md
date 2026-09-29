@@ -323,7 +323,7 @@ Decided:
 2. **Groups:** routers are grouped. A travel router is one group, and a home
    router with two APs is another.
 3. **Firmware:** OpenWrt 25.x only.
-4. **Hardware:** GL.iNet GL-MT3000, Linksys MA8300, ASUS MAP202, GL.iNet
+4. **Hardware:** GL.iNet GL-MT3000, Linksys EA8300, ASUS MAP202, GL.iNet
    Flint 3, TP-Link Archer C7. All use mac80211 drivers (mt76, ath10k, ath9k)
    on which `iwinfo.assoclist` works (§4.1 tier 0). The GL.iNet units run
    vendor firmware unless flashed with stock 25.x, so confirm which you run.
@@ -334,5 +334,5 @@ Still to confirm on real hardware before tiers 2 and 3:
 
 - Whether `hostapd.*` `get_clients` and `file.exec` on `iw` are allowed by the
   default rpcd ACLs on 25.x. If not, the app tells the user which ACL to add.
-- Whether the MA8300 and MAP202 (Qualcomm IPQ40xx) report noise in assoclist.
+- Whether the EA8300 and MAP202 (Qualcomm IPQ40xx) report noise in assoclist.
   Without it there is no SNR, and the card omits it.
