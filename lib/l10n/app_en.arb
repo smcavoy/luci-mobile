@@ -9,6 +9,7 @@
   "settings": "Settings",
   "cancel": "Cancel",
   "appFailureLogin": "Sign-in failed. Check the credentials, and that the router is reachable.",
+  "appFailureUnreachable": "Could not reach the router. Check its address and your network connection, or pick another router.",
   "appFailureFetch": "Could not read the router's status.",
   "appFailureWifiToggle": "Could not switch the wireless radio.",
   "appFailureRadioRestart": "Could not restart the radio.",

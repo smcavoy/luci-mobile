@@ -4,6 +4,7 @@
   "more": "Plus",
   "cancel": "Annuler",
   "appFailureLogin": "Échec de la connexion. Vérifiez les identifiants et que le routeur est joignable.",
+  "appFailureUnreachable": "Impossible de joindre le routeur. Vérifiez son adresse et votre connexion réseau, ou choisissez un autre routeur.",
   "appFailureFetch": "Impossible de lire l’état du routeur.",
   "appFailureWifiToggle": "Impossible de commuter la radio sans fil.",
   "appFailureRadioRestart": "Impossible de redémarrer la radio.",

@@ -4,6 +4,7 @@
   "more": "Más",
   "cancel": "Cancelar",
   "appFailureLogin": "Error al iniciar sesión. Comprueba las credenciales y que el router sea accesible.",
+  "appFailureUnreachable": "No se pudo contactar con el router. Comprueba su dirección y tu conexión de red, o elige otro router.",
   "appFailureFetch": "No se pudo leer el estado del router.",
   "appFailureWifiToggle": "No se pudo conmutar la radio inalámbrica.",
   "appFailureRadioRestart": "No se pudo reiniciar la radio.",

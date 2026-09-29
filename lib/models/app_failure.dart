@@ -8,8 +8,14 @@ import 'package:flutter/foundation.dart';
 /// this, every one of these was an English sentence built in `AppState` and
 /// displayed verbatim, whatever the device's locale.
 enum AppFailureKind {
-  /// Signing in was refused, or the router could not be reached.
+  /// Signing in was refused.
   login,
+
+  /// The router did not answer at all: down, or on a network the phone is
+  /// not on. Kept apart from [login] because the remedy differs - a wrong
+  /// password is fixed by retyping it, this by waiting or picking another
+  /// router.
+  unreachable,
 
   /// The dashboard's own read failed.
   fetch,

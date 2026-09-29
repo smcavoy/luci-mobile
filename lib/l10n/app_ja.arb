@@ -4,6 +4,7 @@
   "more": "その他",
   "cancel": "キャンセル",
   "appFailureLogin": "サインインに失敗しました。認証情報と、ルーターに到達できるかを確認してください。",
+  "appFailureUnreachable": "ルーターに到達できませんでした。アドレスとネットワーク接続を確認するか、別のルーターを選択してください。",
   "appFailureFetch": "ルーターの状態を読み取れませんでした。",
   "appFailureWifiToggle": "無線ラジオを切り替えられませんでした。",
   "appFailureRadioRestart": "ラジオを再起動できませんでした。",

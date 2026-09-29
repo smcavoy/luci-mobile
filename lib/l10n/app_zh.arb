@@ -4,6 +4,7 @@
   "more": "更多",
   "cancel": "取消",
   "appFailureLogin": "登录失败。请检查凭据以及路由器是否可访问。",
+  "appFailureUnreachable": "无法连接到路由器。请检查其地址和网络连接，或选择其他路由器。",
   "appFailureFetch": "无法读取路由器状态。",
   "appFailureWifiToggle": "无法切换无线电台。",
   "appFailureRadioRestart": "无法重启无线电台。",

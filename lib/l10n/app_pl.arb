@@ -4,6 +4,7 @@
   "more": "Więcej",
   "cancel": "Anuluj",
   "appFailureLogin": "Logowanie nie powiodło się. Sprawdź dane logowania i dostępność routera.",
+  "appFailureUnreachable": "Nie można połączyć się z routerem. Sprawdź jego adres i połączenie sieciowe albo wybierz inny router.",
   "appFailureFetch": "Nie udało się odczytać stanu routera.",
   "appFailureWifiToggle": "Nie udało się przełączyć radia bezprzewodowego.",
   "appFailureRadioRestart": "Nie udało się zrestartować radia.",

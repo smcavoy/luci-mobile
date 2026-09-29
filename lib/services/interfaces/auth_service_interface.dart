@@ -5,7 +5,16 @@ class FallbackLoginResult {
   final bool success;
   final int usedAddressIndex; // 0 = primary, 1 = alternate
 
-  FallbackLoginResult({required this.success, required this.usedAddressIndex});
+  /// The error a failed login ended with, when there was one. Null when the
+  /// router answered without a session - a refused sign-in. It is not
+  /// necessarily unreachability: classify it with `isRouterUnreachable`.
+  final Object? cause;
+
+  FallbackLoginResult({
+    required this.success,
+    required this.usedAddressIndex,
+    this.cause,
+  });
 }
 
 abstract class IAuthService {

@@ -13,6 +13,11 @@ class RealAuthService implements IAuthService {
   String? _ipAddress;
   bool _useHttps = false;
 
+  /// The exception that ended the latest [_login], or null if it ended by
+  /// returning normally. Lets `loginWithFallback` tell an unreachable router
+  /// from a refused sign-in, which `_login` reports alike as `false`.
+  Object? _lastLoginError;
+
   RealAuthService(this._apiService);
 
   @override
@@ -42,6 +47,7 @@ class RealAuthService implements IAuthService {
     bool useHttps, {
     BuildContext? context,
   }) async {
+    _lastLoginError = null;
     try {
       // Check if the API service is RealApiService to use protocol detection
       if (_apiService is RealApiService) {
@@ -98,6 +104,7 @@ class RealAuthService implements IAuthService {
         return true;
       }
     } catch (e) {
+      _lastLoginError = e;
       return false;
     }
   }
@@ -124,6 +131,7 @@ class RealAuthService implements IAuthService {
     if (activeOk) {
       return FallbackLoginResult(success: true, usedAddressIndex: activeIndex);
     }
+    final activeError = _lastLoginError;
 
     // Try the fallback address if available
     if (fallbackAddress != null &&
@@ -143,9 +151,26 @@ class RealAuthService implements IAuthService {
           usedAddressIndex: fallbackIndex,
         );
       }
+      // The router is down only if neither address answered. A cause that
+      // is not unreachability - or none, when an address answered and
+      // refused the sign-in - tells the caller it is up.
+      final fallbackError = _lastLoginError;
+      Object? cause;
+      if (activeError != null && fallbackError != null) {
+        cause = isRouterUnreachable(activeError) ? fallbackError : activeError;
+      }
+      return FallbackLoginResult(
+        success: false,
+        usedAddressIndex: activeIndex,
+        cause: cause,
+      );
     }
 
-    return FallbackLoginResult(success: false, usedAddressIndex: activeIndex);
+    return FallbackLoginResult(
+      success: false,
+      usedAddressIndex: activeIndex,
+      cause: activeError,
+    );
   }
 
   @override

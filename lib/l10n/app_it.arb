@@ -4,6 +4,7 @@
   "more": "Altro",
   "cancel": "Annulla",
   "appFailureLogin": "Accesso non riuscito. Controlla le credenziali e che il router sia raggiungibile.",
+  "appFailureUnreachable": "Impossibile raggiungere il router. Controlla il suo indirizzo e la connessione di rete, oppure scegli un altro router.",
   "appFailureFetch": "Impossibile leggere lo stato del router.",
   "appFailureWifiToggle": "Impossibile commutare la radio wireless.",
   "appFailureRadioRestart": "Impossibile riavviare la radio.",

@@ -4,6 +4,7 @@
   "more": "Meer",
   "cancel": "Annuleren",
   "appFailureLogin": "Aanmelden mislukt. Controleer de inloggegevens en of de router bereikbaar is.",
+  "appFailureUnreachable": "De router is niet bereikbaar. Controleer het adres en je netwerkverbinding, of kies een andere router.",
   "appFailureFetch": "Kan de status van de router niet lezen.",
   "appFailureWifiToggle": "Kan de draadloze radio niet omschakelen.",
   "appFailureRadioRestart": "Kan de radio niet opnieuw starten.",
