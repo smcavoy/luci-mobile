@@ -5,7 +5,16 @@ class FallbackLoginResult {
   final bool success;
   final int usedAddressIndex; // 0 = primary, 1 = alternate
 
-  FallbackLoginResult({required this.success, required this.usedAddressIndex});
+  /// Why a failed login failed, when the router could not be reached. Null
+  /// when the router answered and refused, so a caller can tell "down" from
+  /// "wrong password".
+  final Object? cause;
+
+  FallbackLoginResult({
+    required this.success,
+    required this.usedAddressIndex,
+    this.cause,
+  });
 }
 
 abstract class IAuthService {

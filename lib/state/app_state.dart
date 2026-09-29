@@ -14,6 +14,7 @@ import 'package:luci_mobile/services/throughput_service.dart';
 import 'package:luci_mobile/models/client.dart';
 import 'package:luci_mobile/models/station_info.dart';
 import 'package:luci_mobile/models/router.dart' as model;
+import 'package:luci_mobile/models/router_health.dart';
 import 'package:luci_mobile/models/dashboard_preferences.dart';
 import 'package:luci_mobile/models/glinet_data.dart';
 import 'package:luci_mobile/services/interfaces/auth_service_interface.dart';
@@ -49,6 +50,34 @@ class AppState extends ChangeNotifier {
   String? _errorMessage;
   AppFailure? _loginFailure;
   bool? _canReboot;
+
+  final StreamController<RouterHealthReport> _routerHealthReports =
+      StreamController<RouterHealthReport>.broadcast();
+
+  /// What logins and fetches learn about whether a router answers. The
+  /// health notifier listens; nothing here depends on it.
+  Stream<RouterHealthReport> get routerHealthReports =>
+      _routerHealthReports.stream;
+
+  void _reportRouterHealth(
+    String? routerId,
+    RouterHealthStatus status, {
+    Object? error,
+  }) {
+    // Reviewer mode has no router to be up or down.
+    if (routerId == null || _reviewerModeEnabled || _isDisposed) return;
+    _routerHealthReports.add(
+      RouterHealthReport(routerId, status, error: error),
+    );
+  }
+
+  /// Why a login failed, told apart by what the router did: not answering is
+  /// [AppFailureKind.unreachable], answering and refusing is
+  /// [AppFailureKind.login].
+  AppFailure _loginFailureFor(Object? cause) =>
+      cause != null && isRouterUnreachable(cause)
+      ? AppFailure(AppFailureKind.unreachable, cause: cause)
+      : const AppFailure(AppFailureKind.login);
 
   /// True when the administrator-access check could not be completed. A
   /// flag, not a sentence: there is only one thing to say, and the screen
@@ -603,7 +632,7 @@ class AppState extends ChangeNotifier {
     // login() already fetches dashboard data on success; fetching again here
     // would double the RPC burst on every router switch.
     if (!loginSuccess) {
-      _appFailure = const AppFailure(AppFailureKind.login);
+      _appFailure = _loginFailure ?? const AppFailure(AppFailureKind.login);
     }
     _isLoading = false;
     notifyListeners();
@@ -640,6 +669,11 @@ class AppState extends ChangeNotifier {
       _isRebooting = false;
     }
     final token = _sessionToken;
+    // Which saved router this attempt is about, for health reporting. A
+    // manual login for an address that is not saved yet has none.
+    var healthRouterId = fromRouter
+        ? selectedRouter?.id
+        : _routerOnAddress(ip)?.id;
     _isLoading = true;
     _errorMessage = null;
     _loginFailure = null;
@@ -690,6 +724,7 @@ class AppState extends ChangeNotifier {
                   : alternateUseHttps,
               activeAddressIndex: result.usedAddressIndex,
             );
+            healthRouterId = routerWithAlternate.id;
             final idx = _routerService!.routers.indexWhere(
               (r) => r.id == routerWithAlternate.id,
             );
@@ -725,6 +760,7 @@ class AppState extends ChangeNotifier {
             }
           }
         }
+        _reportRouterHealth(healthRouterId, RouterHealthStatus.online);
         await fetchDashboardData();
         if (token != _sessionToken) return false;
         _startThroughputTimer();
@@ -734,7 +770,14 @@ class AppState extends ChangeNotifier {
       } else {
         if (token != _sessionToken) return false;
         _errorMessage = null;
-        _loginFailure = const AppFailure(AppFailureKind.login);
+        _loginFailure = _loginFailureFor(result.cause);
+        _reportRouterHealth(
+          healthRouterId,
+          _loginFailure!.kind == AppFailureKind.unreachable
+              ? RouterHealthStatus.unreachable
+              : RouterHealthStatus.authFailed,
+          error: result.cause,
+        );
         _isLoading = false;
         notifyListeners();
         return false;
@@ -742,7 +785,18 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       if (token != _sessionToken) return false;
       _errorMessage = null;
-      _loginFailure = AppFailure(AppFailureKind.login, cause: e);
+      final unreachable = isRouterUnreachable(e);
+      _loginFailure = AppFailure(
+        unreachable ? AppFailureKind.unreachable : AppFailureKind.login,
+        cause: e,
+      );
+      _reportRouterHealth(
+        healthRouterId,
+        unreachable
+            ? RouterHealthStatus.unreachable
+            : RouterHealthStatus.authFailed,
+        error: e,
+      );
       _isLoading = false;
       notifyListeners();
       return false;
@@ -1152,6 +1206,7 @@ class AppState extends ChangeNotifier {
 
       if (token != _sessionToken) return;
 
+      _reportRouterHealth(selectedRouter.id, RouterHealthStatus.online);
       _dashboardData = {
         'fetchedAt': DateTime.now(),
         'boardInfo': boardInfoData,
@@ -1231,6 +1286,15 @@ class AppState extends ChangeNotifier {
         }
       }
       _appFailure = AppFailure(AppFailureKind.fetch, cause: e);
+      // Only a router that did not answer is down; one that answered and
+      // refused a read is up, and says nothing new about its health.
+      if (isRouterUnreachable(e)) {
+        _reportRouterHealth(
+          selectedRouter.id,
+          RouterHealthStatus.unreachable,
+          error: e,
+        );
+      }
     } finally {
       // A newer session (router switch / re-login / logout) started while this
       // fetch was in flight - drop the stale results instead of clobbering it.
@@ -2965,6 +3029,7 @@ class AppState extends ChangeNotifier {
     _throughputTimer?.cancel();
     _cancelRebootPolling();
     _isRebooting = false;
+    unawaited(_routerHealthReports.close());
     super.dispose();
   }
 

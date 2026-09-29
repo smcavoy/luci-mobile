@@ -48,6 +48,7 @@ String appFailureText(BuildContext context, AppFailure failure) {
   final subject = failure.subject ?? '?';
   final sentence = switch (failure.kind) {
     AppFailureKind.login => l10n.appFailureLogin,
+    AppFailureKind.unreachable => l10n.appFailureUnreachable,
     AppFailureKind.fetch => l10n.appFailureFetch,
     AppFailureKind.wifiToggle => l10n.appFailureWifiToggle,
     AppFailureKind.radioRestart => l10n.appFailureRadioRestart,
@@ -62,6 +63,10 @@ String appFailureText(BuildContext context, AppFailure failure) {
     AppFailureKind.wirelessReload => l10n.appFailureWirelessReload,
   };
   final cause = failure.cause;
-  if (cause == null) return sentence;
+  // The sentence already says the router did not answer; the cause would
+  // only say it again.
+  if (cause == null || failure.kind == AppFailureKind.unreachable) {
+    return sentence;
+  }
   return '$sentence ${apiErrorText(context, cause)}';
 }

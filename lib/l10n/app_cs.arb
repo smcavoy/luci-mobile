@@ -4,6 +4,7 @@
   "more": "Více",
   "cancel": "Zrušit",
   "appFailureLogin": "Přihlášení se nezdařilo. Zkontrolujte přihlašovací údaje a dostupnost routeru.",
+  "appFailureUnreachable": "Router není dostupný. Zkontrolujte jeho adresu a připojení k síti, nebo vyberte jiný router.",
   "appFailureFetch": "Nepodařilo se načíst stav routeru.",
   "appFailureWifiToggle": "Nepodařilo se přepnout bezdrátové rádio.",
   "appFailureRadioRestart": "Nepodařilo se restartovat rádio.",

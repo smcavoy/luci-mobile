@@ -4,6 +4,7 @@
   "more": "Mehr",
   "cancel": "Abbrechen",
   "appFailureLogin": "Anmeldung fehlgeschlagen. Prüfe die Zugangsdaten und ob der Router erreichbar ist.",
+  "appFailureUnreachable": "Der Router ist nicht erreichbar. Prüfe seine Adresse und deine Netzwerkverbindung oder wähle einen anderen Router.",
   "appFailureFetch": "Der Status des Routers konnte nicht gelesen werden.",
   "appFailureWifiToggle": "Das WLAN-Radio konnte nicht umgeschaltet werden.",
   "appFailureRadioRestart": "Das Radio konnte nicht neu gestartet werden.",
